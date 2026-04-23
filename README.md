@@ -1,3 +1,11 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./assets/banner-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="./assets/banner-light.png">
+    <img alt="Durable Entity — Resonate example" src="./assets/banner-dark.png">
+  </picture>
+</p>
+
 # Durable Entity (User Session)
 
 A long-lived user session entity modeled as a durable workflow. The session tracks login, activity recording, an idle timeout, expiry, and cleanup — all as durable checkpoints. If the process crashes mid-session, it resumes exactly where it left off: no activities are double-recorded, the idle timer picks up from where it paused.
