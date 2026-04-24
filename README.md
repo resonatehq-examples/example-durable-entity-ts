@@ -46,30 +46,9 @@ export function* sessionLifecycle(ctx: Context, sessionId: string, userId: strin
 
 On crash and resume, Resonate replays the generator. Each `yield*` checks the promise store first. Completed activities return cached results — no re-recording. The `ctx.sleep()` resumes from wherever it was when the crash happened.
 
-### Restate Comparison
+### Why the entity is the workflow
 
-Restate models this as a Virtual Object — a keyed service with built-in K/V storage:
-
-```typescript
-// Restate: state lives in K/V store
-const userFeed = restate.object({
-  name: "userFeed",
-  handlers: {
-    processPost: async (ctx: restate.ObjectContext, post: Post) => {
-      const postId = await ctx.run(() => createPost(userId, post));
-
-      // Poll with sleep until content moderation passes
-      while ((await ctx.run(() => getPostStatus(postId))) === PENDING) {
-        await ctx.sleep({ seconds: 5 });
-      }
-
-      await ctx.run(() => updateUserFeed(userId, postId));
-    },
-  },
-});
-```
-
-Resonate's approach: state is a JavaScript variable passed through `ctx.run()` calls, accumulated in the generator. No object declaration, no `ctx.get`/`ctx.set`. The entity's lifecycle is expressed as sequential code.
+There is no separate K/V store for the session's state. The generator's local variables ARE the state. Entity lifecycle is expressed as sequential code: login → activity loop → idle timeout → cleanup. No object declaration, no `ctx.get`/`ctx.set`, no handler registration. The workflow ID (the session ID) is the stable identifier; any process that reaches the same ID replays the same durable execution.
 
 ## Prerequisites
 
@@ -157,21 +136,11 @@ example-durable-entity-ts/
 
 **Lines of code**: ~306 total, ~45 lines of entity logic (workflow.ts minus comments).
 
-## Comparison
+## Concurrency note
 
-| | Resonate | Restate |
-|---|---|---|
-| Entity model | Long-running generator | Virtual Object (keyed service) |
-| State storage | Local JS variable in generator | K/V store (`ctx.get`/`ctx.set`) |
-| Concurrent access | Same workflow ID = idempotent | Per-key exclusive lock |
-| Time-based behavior | `ctx.sleep()` (durable) | `ctx.sleep()` (durable) |
-| Entity code | ~45 LOC | ~60 LOC (`eventtransactions/user_feed.ts`) |
-| Infrastructure | None | Restate server |
-
-Restate's Virtual Object serializes concurrent calls per key — two HTTP requests racing to update the same session are automatically queued. Resonate's model is different: the workflow is the entity, and the promise ID acts as the mutex (same ID = same idempotent result). For truly concurrent mutation from multiple callers, Restate's explicit per-key locking model has advantages. For the common case — one session, one execution path — Resonate's generator model is simpler.
+Two HTTP requests racing to update the same session with the same session ID get the same cached result — that's workflow idempotency, not per-key serialization under a lock. If you need concurrent-mutation exclusivity (multiple independent callers racing to mutate an entity under a true mutex), reach for a mutex pattern (see [example-distributed-mutex-ts](https://github.com/resonatehq-examples/example-distributed-mutex-ts)) or an external store with its own concurrency model. This example optimizes for the common case: one session, one durable execution path.
 
 ## Learn More
 
 - [Resonate documentation](https://docs.resonatehq.io)
-- [Restate event transactions (Virtual Object + Kafka)](https://github.com/restatedev/examples/tree/main/typescript/patterns-use-cases/src/eventtransactions)
-- [Restate virtual objects intro](https://github.com/restatedev/examples/blob/main/typescript/basics/src/2_virtual_objects.ts)
+- [Distributed mutex pattern](https://github.com/resonatehq-examples/example-distributed-mutex-ts) — serialized access when multiple callers race
