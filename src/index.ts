@@ -76,3 +76,5 @@ if (crashMode) {
     "\nThe idle timeout and cleanup ran normally after the retry.",
   );
 }
+
+resonate.stop();
