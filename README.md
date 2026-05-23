@@ -6,6 +6,12 @@
   </picture>
 </p>
 
+<p align="center">
+  <a href="https://resonatehq.github.io/examples-ci/">
+    <img src="https://img.shields.io/endpoint?url=https://resonatehq.github.io/examples-ci/status/example-durable-entity-ts.json" alt="examples-ci status">
+  </a>
+</p>
+
 # Durable Entity (User Session)
 
 A long-lived user session entity modeled as a durable workflow. The session tracks login, activity recording, an idle timeout, expiry, and cleanup — all as durable checkpoints. If the process crashes mid-session, it resumes exactly where it left off: no activities are double-recorded, the idle timer picks up from where it paused.
